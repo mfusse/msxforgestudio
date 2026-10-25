@@ -1,0 +1,38 @@
+name: Windows Portable Beta 1
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "core/**"
+      - "qt/**"
+      - "CMakeLists.txt"
+      - "packaging/**"
+      - ".github/workflows/windows-portable.yml"
+permissions:
+  contents: read
+jobs:
+  windows-portable:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt 6.8 (MSVC 2022 x64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+          cache: true
+      - name: Configure CMake
+        shell: pwsh
+        run: cmake -S . -B build-win -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+      - name: Build Release
+        shell: pwsh
+        run: cmake --build build-win --config Release --parallel
+      - name: Assemble portable ZIP
+        shell: pwsh
+        run: ./packaging/make_portable.ps1 -BuildDir build-win -OutputDir release -QtBin "$env:QT_ROOT_DIR/bin"
+      - name: Upload portable archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSXForgeStudio_0_6_0_Windows_Portable_Beta1
+          path: release/MSXForgeStudio_0_6_0_Windows_Portable_Beta1.zip
+          if-no-files-found: error
